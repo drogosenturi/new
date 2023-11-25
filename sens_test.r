@@ -2,10 +2,11 @@ library(ggplot2)
 library(httpgd)
 library(data.table)
 library(pwr)
+library(MASS)
 # make df of all data
 ## in the future, use MEAN bird-love and run 1000 times 
 ## regardless if birds die off
-df <- fread("10-24-2.csv", skip=6)
+df <- fread("nik_files_large/10-24-2.csv", skip=6)
 names(df) <- gsub(" ", "_", names(df))
 names(df) <- gsub("-", "_", names(df))
 names(df) <- gsub("\\[|\\]", "", names(df))
@@ -19,22 +20,73 @@ avgDF <- aggregate(count_turtles ~ mean_vegetation_volume +
     max_bird+dispersal_distance+habitat_radius, df, mean)
 head(avgDF)
 tail(avgDF)
-## works for just one y variable
 
+## works for just one y variable
+##  Aggregate multiple y
 avgDF <- aggregate(cbind(count_turtles, mean_habitat_of_patches) ~ step +
     mean_vegetation_volume + max_bird + dispersal_distance +
     habitat_radius, df, mean)
 head(avgDF)
 tail(avgDF)
-plot(df$)
+avgDF$habitat_sum <- avgDF$mean_habitat_of_patches * 441 # turn avg into sum
+
+# check for violations
+ggplot(avgDF, aes(x=habitat_sum)) +
+    geom_histogram()
+##  Not normal, RIGHT SKEW
+# transform
+avgDF$hab_trans <- avgDF$habitat_sum
+ggplot(avgDF, aes(x=hab_trans)) +
+    geom_histogram()
+
+ggplot(avgDF, aes(x=count_turtles)) +
+    geom_histogram()
+##  NORMAL
+
+
+#   ANOVA   #
+anova1 <- lm(count_turtles ~ max_bird + mean_vegetation_volume +
+    max_bird * mean_vegetation_volume, data=avgDF)
+summary(anova1)
+anova_all <- anova(anova1)
+anova_all
+## can I simply add variables together to do an anova on each,
+## or must it be done separately?
+
+anova2 <- lm(count_turtles ~ mean_vegetation_volume, avgDF)
+summary(anova2)
+## plot x vs y
+png(file = "nik_files/vegxbirdsy.png")
+ggplot(avgDF, aes(x=mean_vegetation_volume,y=count_turtles)) +
+    geom_point() +
+    geom_smooth(method = lm)
+dev.off()
+## plot anova to pdf
+png(file = "nik_files/plot_test.png")
+layout(matrix(1:4, ncol = 2))
+plot(anova2)
+layout(1)
+dev.off()
+
+anova_start_veg <- anova(anova2)
+anova_start_veg
+
+anova3 <- lm(count_turtles ~ dispersal_distance, avgDF)
+summary(anova3)
+anova_disp <- anova(anova3)
+anova_disp
+
+anova4 <- lm(count_turtles ~ habitat_radius, avgDF)
+summary(anova4)
+anova_hab <- anova(anova4)
+anova_hab
+
+
+
 
 ## works for multiple response variables at once including steps
 test <- avgDF[mean_vegetation_volume==3.0 & max_bird==5 &
     dispersal_distance==2 & habitat_radius==3, step]
-
-
-
-
 
 #   Birds over time | veg=3, dist=2,rad=2, max=5
 ot <- df[mean_vegetation_volume==3 &
