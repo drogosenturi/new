@@ -23,7 +23,7 @@ head(avgDF)
 newDF <- avgDF[avgDF$step == 1000, 1:7]
 head(newDF)
 tail(newDF)
-
+write.csv(newDF, "nik_files/480_data.csv")
 ## Check violations
 ggplot(newDF, aes(x=count_turtles)) +
     geom_histogram() +
